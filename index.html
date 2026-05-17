@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Busha — Content Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080808;
+      --surface: #111111;
+      --surface2: #181818;
+      --border: #222;
+      --text: #F2EFE8;
+      --muted: #666;
+      --faint: #2a2a2a;
+      --accent: #E8C84A;
+      --accent-dim: rgba(232,200,74,0.12);
+      --font-display: 'Cormorant Garamond', serif;
+      --font-body: 'Syne', sans-serif;
+      --radius: 18px;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(232,200,74,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      color: #111;
+    }
+
+    .brand {
+      font-family: var(--font-display);
+      font-size: 52px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .tagline {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .day-pill {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(232,200,74,0.3);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 16px;
+      border-radius: 40px;
+    }
+
+    .pulse-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: blink 1.6s infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+
+    .generate-btn {
+      margin-top: 40px;
+      padding: 16px 52px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #0a0a0a;
+      background: var(--accent);
+      border: none;
+      border-radius: 60px;
+      cursor: pointer;
+      transition: transform 0.18s, box-shadow 0.18s;
+      box-shadow: 0 4px 30px rgba(232,200,74,0.28);
+      animation: fadeUp 0.7s 0.15s ease both;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .generate-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(232,200,74,0.4);
+    }
+
+    .generate-btn:disabled {
+      background: #222;
+      color: #444;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-star { font-size: 18px; transition: transform 0.4s; }
+    .generate-btn:hover:not(:disabled) .btn-star { transform: rotate(72deg); }
+
+    /* Loading */
+    .loading-msg {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 44px;
+    }
+    .loading-msg.visible { display: flex; animation: fadeUp 0.4s ease both; }
+
+    .dots {
+      display: flex; gap: 7px;
+    }
+    .dots span {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: bounce 1s infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.15s; }
+    .dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+
+    .loading-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Error */
+    .error-msg {
+      display: none;
+      margin-top: 28px;
+      padding: 14px 20px;
+      background: rgba(255,80,80,0.07);
+      border: 1px solid rgba(255,80,80,0.2);
+      border-radius: 14px;
+      color: #ff6b6b;
+      font-size: 13px;
+    }
+    .error-msg.visible { display: block; }
+
+    /* Card */
+    .card {
+      display: none;
+      margin-top: 44px;
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .card.visible { display: block; animation: fadeUp 0.5s ease both; }
+
+    /* Image zone */
+    .card-image-wrap {
+      position: relative;
+      width: 100%;
+      height: 310px;
+      background: var(--surface2);
+      overflow: hidden;
+    }
+
+    .card-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .card-img.loaded { opacity: 1; }
+
+    .img-skeleton {
+      position: absolute; inset: 0;
+      background: linear-gradient(110deg, #141414 30%, #1c1c1c 50%, #141414 70%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .img-skeleton.gone { display: none; }
+
+    .skeleton-icon { font-size: 28px; opacity: 0.2; }
+    .skeleton-label {
+      font-size: 11px;
+      color: #333;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    .vibe-badge {
+      position: absolute;
+      top: 16px; left: 16px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 40px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .img-open-btn {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 38px; height: 38px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #fff;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .img-open-btn:hover { background: rgba(255,255,255,0.14); }
+
+    /* Card body */
+    .card-body { padding: 28px 28px 22px; }
+
+    .field-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .topic-row, .text-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .topic-title {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1.2;
+      flex: 1;
+    }
+
+    .divider { height: 1px; background: var(--faint); margin-bottom: 22px; }
+
+    .post-text {
+      font-size: 15px;
+      line-height: 1.72;
+      color: #aaa;
+      flex: 1;
+    }
+
+    .copy-btn {
+      width: 36px; height: 36px;
+      background: var(--faint);
+      border: none;
+      border-radius: 9px;
+      color: #555;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { background: #333; color: #aaa; }
+    .copy-btn.copied { background: var(--accent-dim); color: var(--accent); }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--faint);
+    }
+
+    .regen-btn {
+      background: transparent;
+      border: 1px solid var(--faint);
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 22px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .regen-btn:hover { border-color: #3a3a3a; color: #aaa; }
+
+    .powered { font-size: 11px; color: #2e2e2e; letter-spacing: 0.07em; }
+
+    .page-footer {
+      margin-top: 72px;
+      font-size: 10px;
+      color: #222;
+      letter-spacing: 0.16em;
+      text-align: center;
+    }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(18px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    @media (max-width: 500px) {
+      .brand { font-size: 38px; }
+      .card-image-wrap { height: 220px; }
+      .topic-title { font-size: 24px; }
+      .card-body { padding: 20px; }
+      .generate-btn { padding: 14px 36px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <div class="logo-row">
+      <div class="logo-mark">✦</div>
+      <h1 class="brand">Busha</h1>
+    </div>
+    <p class="tagline">Content Studio</p>
+    <div class="day-pill">
+      <div class="pulse-dot"></div>
+      Saturday Vibes
+    </div>
+  </div>
+
+  <button class="generate-btn" id="genBtn" onclick="generate()">
+    <span class="btn-star">✦</span>
+    Give me a topic
+  </button>
+
+  <div class="loading-msg" id="loadingMsg">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <p class="loading-label" id="loadingLabel">Busha is cooking…</p>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="card" id="resultCard">
+    <div class="card-image-wrap">
+      <div class="img-skeleton" id="imgSkeleton">
+        <span class="skeleton-icon">🖼</span>
+        <span class="skeleton-label">Generating image…</span>
+      </div>
+      <img class="card-img" id="cardImg" alt="Generated visual" />
+      <div class="vibe-badge" id="vibeBadge"></div>
+      <a class="img-open-btn" id="imgLink" title="Open full image" target="_blank" rel="noopener">↗</a>
+    </div>
+
+    <div class="card-body">
+      <p class="field-label">Topic</p>
+      <div class="topic-row">
+        <h2 class="topic-title" id="topicTitle"></h2>
+        <button class="copy-btn" id="btnCopyTopic" title="Copy topic" onclick="doCopy('topic')">⎘</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="field-label">Caption / Post Text</p>
+      <div class="text-row">
+        <p class="post-text" id="postText"></p>
+        <button class="copy-btn" id="btnCopyText" title="Copy caption" onclick="doCopy('text')">⎘</button>
+      </div>
+
+      <div class="card-footer">
+        <button class="regen-btn" onclick="generate()">↻ Try another</button>
+        <span class="powered">Busha × Claude</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="page-footer">BUSHA CONTENT STUDIO — POWERED BY AI</p>
+</div>
+
+<script>
+  const SYSTEM = `You are Busha, a sharp and creative content strategist for social media creators.
+
+Today is Saturday. Generate ONE weekend-themed content idea.
+
+Respond ONLY in this exact JSON format — no markdown, no backticks, no extra text:
+{
+  "topic": "Short punchy topic title (max 8 words)",
+  "text": "A compelling 2–3 sentence caption or post body. Make it feel real, relatable, and ready to post. Use 1–2 emojis naturally.",
+  "vibe": "One word from: Chill, Bold, Reflective, Motivating, Fun",
+  "imagePrompt": "Cinematic lifestyle photo for this topic. No text, no people's faces close-up, warm weekend atmosphere, rich natural colors. Max 25 words."
+}`;
+
+  const VIBE_COLORS = {
+    Chill:      { bg: 'rgba(126,200,200,0.85)', fg: '#062020' },
+    Bold:       { bg: 'rgba(255,107,107,0.85)', fg: '#1a0000' },
+    Reflective: { bg: 'rgba(181,164,207,0.85)', fg: '#100820' },
+    Motivating: { bg: 'rgba(244,162,97,0.85)',  fg: '#180800' },
+    Fun:        { bg: 'rgba(249,200,70,0.85)',   fg: '#151000' },
+  };
+
+  let current = null;
+
+  async function generate() {
+    const btn       = document.getElementById('genBtn');
+    const card      = document.getElementById('resultCard');
+    const loading   = document.getElementById('loadingMsg');
+    const errorEl   = document.getElementById('errorMsg');
+    const loadLabel = document.getElementById('loadingLabel');
+
+    btn.disabled = true;
+    card.classList.remove('visible');
+    errorEl.classList.remove('visible');
+    loading.classList.add('visible');
+    loadLabel.textContent = 'Busha is cooking…';
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: SYSTEM,
+          messages: [{ role: 'user', content: 'Give me a Saturday content topic.' }]
+        })
+      });
+
+      const data  = await res.json();
+      const raw   = (data.content || []).map(b => b.text || '').join('');
+      const clean = raw.replace(/```json|```/g, '').trim();
+      current     = JSON.parse(clean);
+
+      renderText(current);
+
+      // Load image
+      loadLabel.textContent = 'Generating image…';
+      await loadImage(current.imagePrompt);
+
+      loading.classList.remove('visible');
+      card.classList.add('visible');
+
+    } catch (e) {
+      loading.classList.remove('visible');
+      errorEl.textContent = '✦ Busha had a brain fog moment — please try again!';
+      errorEl.classList.add('visible');
+    }
+
+    btn.disabled = false;
+  }
+
+  function renderText({ topic, text, vibe }) {
+    document.getElementById('topicTitle').textContent = topic;
+    document.getElementById('postText').textContent   = text;
+
+    const badge  = document.getElementById('vibeBadge');
+    const colors = VIBE_COLORS[vibe] || { bg: 'rgba(232,200,74,0.85)', fg: '#111' };
+    badge.textContent       = vibe;
+    badge.style.background  = colors.bg;
+    badge.style.color       = colors.fg;
+
+    document.getElementById('btnCopyTopic').classList.remove('copied');
+    document.getElementById('btnCopyTopic').textContent = '⎘';
+    document.getElementById('btnCopyText').classList.remove('copied');
+    document.getElementById('btnCopyText').textContent  = '⎘';
+  }
+
+  function loadImage(prompt) {
+    return new Promise(resolve => {
+      const img      = document.getElementById('cardImg');
+      const skeleton = document.getElementById('imgSkeleton');
+      const link     = document.getElementById('imgLink');
+
+      img.classList.remove('loaded');
+      skeleton.classList.remove('gone');
+
+      const seed = Math.floor(Math.random() * 999999);
+      const url  = `https://image.pollinations.ai/prompt/${encodeURIComponent(
+        prompt + ', cinematic, editorial, lifestyle photography, 16:9, high quality'
+      )}?width=840&height=472&seed=${seed}&nologo=true`;
+
+      img.onload  = () => { skeleton.classList.add('gone'); img.classList.add('loaded'); link.href = url; resolve(); };
+      img.onerror = () => { skeleton.innerHTML = '<span class="skeleton-label" style="color:#333">Image unavailable</span>'; resolve(); };
+      img.src     = url;
+
+      // 35s fallback
+      setTimeout(resolve, 35000);
+    });
+  }
+
+  function doCopy(type) {
+    if (!current) return;
+    const val  = type === 'topic' ? current.topic : current.text;
+    const btnId = type === 'topic' ? 'btnCopyTopic' : 'btnCopyText';
+    const btn  = document.getElementById(btnId);
+    navigator.clipboard.writeText(val).then(() => {
+      btn.textContent = '✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '⎘'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
+
